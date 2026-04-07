@@ -34,7 +34,7 @@ const code = src.replace(/\/\/ ---------- IndexedDB layer ----------[\s\S]*$/, "
 const m = { exports: {} };
 new Function("module", "exports", code)(m, m.exports);
 const { parseQIF, assignIds } = m.exports;
-const txt = fs.readFileSync("HistoriqueOperations_013517866840_du_01_01_2026_au_07_04_2026.qif", "utf8");
+const txt = fs.readFileSync("example.qif", "utf8");
 console.log(assignIds(parseQIF(txt)).length, "rows");
 '
 ```
