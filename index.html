@@ -40,6 +40,18 @@
     <button id="f-reset" class="btn" type="button">Reset</button>
   </section>
 
+  <section class="bulk-apply">
+    <span class="bulk-apply-label">Categorize filtered results as</span>
+    <div class="combobox" id="bc-category-combo">
+      <input id="bc-category" type="text" autocomplete="off" placeholder="Category"
+             role="combobox" aria-autocomplete="list"
+             aria-expanded="false" aria-controls="bc-category-list">
+      <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Show categories">▾</button>
+      <ul id="bc-category-list" class="combobox-list" role="listbox" hidden></ul>
+    </div>
+    <button id="bc-apply" class="btn primary" type="button">Apply</button>
+  </section>
+
   <section class="summary">
     <div><span class="label">Count</span><span id="s-count">0</span></div>
     <div><span class="label">In</span><span id="s-in" class="credit">0.00</span></div>

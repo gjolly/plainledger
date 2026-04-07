@@ -82,6 +82,24 @@ html, body {
 .filters label { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted); }
 .filters #f-category { min-width: 10rem; max-width: 16rem; }
 
+.bulk-apply {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0 1.25rem 0.75rem;
+}
+.bulk-apply-label { color: var(--muted); }
+.bulk-apply .combobox { width: 14rem; }
+.bulk-apply input[type="text"] {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--fg);
+}
+
 .summary {
   display: flex;
   gap: 0.75rem;

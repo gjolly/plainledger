@@ -156,6 +156,19 @@ async function dbClear() {
   });
 }
 
+// Overwriting bulk put: used by operations that intentionally mutate
+// user-editable fields (bulk categorize). Does NOT merge-preserve.
+async function dbBulkOverwrite(rows) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const t = tx(db, [STORE], "readwrite");
+    const store = t.objectStore(STORE);
+    for (const row of rows) store.put(row);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
 // Merge-preserving bulk put: existing rows keep user-added category + comment.
 async function dbBulkPut(rows) {
   const db = await openDB();
@@ -385,13 +398,14 @@ async function importJsonFile(file) {
 // ---------- Category combobox ----------
 
 // Minimal combobox: click to browse all categories, type to filter, or type a
-// brand-new value. The input is the source of truth; saveDrawer reads its value.
-const categoryCombo = (() => {
+// brand-new value. The input is the source of truth. Factory so multiple
+// inputs (drawer, bulk categorize panel) can share the same behavior.
+function createCategoryCombo({ inputSel, listSel, toggleSel, onPick }) {
   let activeIndex = -1;
   let visible = [];
 
-  const input = () => $("#d-category");
-  const list = () => $("#d-category-list");
+  const input = () => $(inputSel);
+  const list = () => $(listSel);
 
   function open() {
     renderList();
@@ -422,6 +436,7 @@ const categoryCombo = (() => {
     if (i < 0 || i >= visible.length) return;
     input().value = visible[i];
     close();
+    if (onPick) onPick(visible[i]);
   }
 
   function moveActive(delta) {
@@ -435,7 +450,7 @@ const categoryCombo = (() => {
   function init() {
     const inp = input();
     const ul = list();
-    const toggle = $("#d-category-combo .combobox-toggle");
+    const toggle = $(toggleSel);
 
     inp.addEventListener("focus", open);
     inp.addEventListener("input", () => {
@@ -473,7 +488,19 @@ const categoryCombo = (() => {
   }
 
   return { init, close };
-})();
+}
+
+const categoryCombo = createCategoryCombo({
+  inputSel: "#d-category",
+  listSel: "#d-category-list",
+  toggleSel: "#d-category-combo .combobox-toggle",
+});
+
+const bulkCategoryCombo = createCategoryCombo({
+  inputSel: "#bc-category",
+  listSel: "#bc-category-list",
+  toggleSel: "#bc-category-combo .combobox-toggle",
+});
 
 // ---------- Drawer ----------
 
@@ -517,6 +544,21 @@ async function deleteDrawer() {
   await dbDelete(state.editing);
   closeDrawer();
   await reload();
+}
+
+// ---------- Bulk categorize filtered results ----------
+
+async function applyBulkCategorize() {
+  const category = $("#bc-category").value.trim();
+  if (!category) { showToast("Category required"); return; }
+  const matches = state.filtered;
+  if (matches.length === 0) { showToast("No filtered results"); return; }
+  if (!confirm(`Categorize ${matches.length} transaction${matches.length === 1 ? "" : "s"} as "${category}"?`)) return;
+  const updated = matches.map(r => ({ ...r, category }));
+  await dbBulkOverwrite(updated);
+  $("#bc-category").value = "";
+  await reload();
+  showToast(`Categorized ${matches.length}`);
 }
 
 // ---------- Toast ----------
@@ -626,6 +668,10 @@ function wire() {
 
   // Category combobox inside the drawer
   categoryCombo.init();
+  bulkCategoryCombo.init();
+
+  // Bulk categorize current filtered results
+  $("#bc-apply").addEventListener("click", applyBulkCategorize);
 
   // Drawer actions
   $("#drawer-close").addEventListener("click", closeDrawer);
