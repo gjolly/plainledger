@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Finance — local QIF ledger</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Finance</h1>
+    <div class="actions">
+      <label class="btn">
+        Import QIF
+        <input id="file-input" type="file" accept=".qif,.txt" hidden>
+      </label>
+      <button id="export-json" class="btn" type="button">Export JSON</button>
+      <label class="btn">
+        Import JSON
+        <input id="json-input" type="file" accept=".json,application/json" hidden>
+      </label>
+      <button id="clear-all" class="btn danger" type="button">Clear all</button>
+    </div>
+  </header>
+
+  <section id="dropzone" class="dropzone">
+    Drop a <code>.qif</code> file here, or click <em>Import QIF</em>.
+  </section>
+
+  <section class="filters">
+    <input id="f-search" type="search" placeholder="Search payee, memo, comment, category…">
+    <label>From <input id="f-from" type="date"></label>
+    <label>To <input id="f-to" type="date"></label>
+    <select id="f-sign">
+      <option value="all">All</option>
+      <option value="debit">Debits only</option>
+      <option value="credit">Credits only</option>
+    </select>
+    <select id="f-category" multiple size="1" title="Filter by category"></select>
+    <button id="f-reset" class="btn" type="button">Reset</button>
+  </section>
+
+  <section class="summary">
+    <div><span class="label">Count</span><span id="s-count">0</span></div>
+    <div><span class="label">In</span><span id="s-in" class="credit">0.00</span></div>
+    <div><span class="label">Out</span><span id="s-out" class="debit">0.00</span></div>
+    <div><span class="label">Net</span><span id="s-net">0.00</span></div>
+  </section>
+
+  <main>
+    <table id="tx-table">
+      <thead>
+        <tr>
+          <th data-sort="date">Date</th>
+          <th data-sort="payee">Payee</th>
+          <th data-sort="amount" class="num">Amount</th>
+          <th data-sort="category">Category</th>
+          <th>Comment</th>
+        </tr>
+      </thead>
+      <tbody id="tx-body"></tbody>
+    </table>
+    <p id="empty-state" class="empty">No transactions yet. Import a QIF file to get started.</p>
+  </main>
+
+  <aside id="drawer" class="drawer" hidden>
+    <header>
+      <h2>Transaction</h2>
+      <button id="drawer-close" class="btn" type="button">×</button>
+    </header>
+    <dl>
+      <dt>Date</dt><dd id="d-date"></dd>
+      <dt>Payee</dt><dd id="d-payee"></dd>
+      <dt>Memo</dt><dd id="d-memo"></dd>
+      <dt>Amount</dt><dd id="d-amount"></dd>
+    </dl>
+    <label>Category
+      <input id="d-category" type="text" list="category-list">
+    </label>
+    <datalist id="category-list"></datalist>
+    <label>Comment
+      <textarea id="d-comment" rows="5"></textarea>
+    </label>
+    <div class="drawer-actions">
+      <button id="d-save" class="btn primary" type="button">Save</button>
+      <button id="d-delete" class="btn danger" type="button">Delete</button>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
