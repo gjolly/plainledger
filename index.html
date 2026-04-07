@@ -75,9 +75,14 @@
       <dt>Amount</dt><dd id="d-amount"></dd>
     </dl>
     <label>Category
-      <input id="d-category" type="text" list="category-list">
+      <div class="combobox" id="d-category-combo">
+        <input id="d-category" type="text" autocomplete="off"
+               role="combobox" aria-autocomplete="list"
+               aria-expanded="false" aria-controls="d-category-list">
+        <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Show categories">▾</button>
+        <ul id="d-category-list" class="combobox-list" role="listbox" hidden></ul>
+      </div>
     </label>
-    <datalist id="category-list"></datalist>
     <label>Comment
       <textarea id="d-comment" rows="5"></textarea>
     </label>

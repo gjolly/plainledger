@@ -208,6 +208,7 @@ const state = {
     categories: new Set(),
   },
   editing: null,
+  allCategories: [],
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -307,9 +308,7 @@ function refreshCategoryUI() {
   const cats = new Set();
   for (const r of state.rows) if (r.category) cats.add(r.category);
   const sorted = Array.from(cats).sort();
-
-  const dl = $("#category-list");
-  dl.innerHTML = sorted.map(c => `<option value="${escapeHtml(c)}">`).join("");
+  state.allCategories = sorted;
 
   const sel = $("#f-category");
   const prev = new Set(state.filters.categories);
@@ -383,6 +382,99 @@ async function importJsonFile(file) {
   await reload();
 }
 
+// ---------- Category combobox ----------
+
+// Minimal combobox: click to browse all categories, type to filter, or type a
+// brand-new value. The input is the source of truth; saveDrawer reads its value.
+const categoryCombo = (() => {
+  let activeIndex = -1;
+  let visible = [];
+
+  const input = () => $("#d-category");
+  const list = () => $("#d-category-list");
+
+  function open() {
+    renderList();
+    if (visible.length === 0) { close(); return; }
+    list().hidden = false;
+    input().setAttribute("aria-expanded", "true");
+  }
+
+  function close() {
+    list().hidden = true;
+    input().setAttribute("aria-expanded", "false");
+    activeIndex = -1;
+  }
+
+  function renderList() {
+    const q = input().value.trim().toLowerCase();
+    visible = q
+      ? state.allCategories.filter(c => c.toLowerCase().includes(q))
+      : state.allCategories.slice();
+    if (activeIndex >= visible.length) activeIndex = visible.length - 1;
+    const ul = list();
+    ul.innerHTML = visible.map((c, i) =>
+      `<li role="option" data-index="${i}"${i === activeIndex ? ' class="active"' : ""}>${escapeHtml(c)}</li>`
+    ).join("");
+  }
+
+  function pick(i) {
+    if (i < 0 || i >= visible.length) return;
+    input().value = visible[i];
+    close();
+  }
+
+  function moveActive(delta) {
+    if (visible.length === 0) return;
+    activeIndex = (activeIndex + delta + visible.length) % visible.length;
+    renderList();
+    const el = list().querySelector("li.active");
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }
+
+  function init() {
+    const inp = input();
+    const ul = list();
+    const toggle = $("#d-category-combo .combobox-toggle");
+
+    inp.addEventListener("focus", open);
+    inp.addEventListener("input", () => {
+      activeIndex = visible.length ? 0 : -1;
+      open();
+    });
+    inp.addEventListener("blur", () => {
+      setTimeout(close, 120);
+    });
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); if (list().hidden) open(); else moveActive(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); if (list().hidden) open(); else moveActive(-1); }
+      else if (e.key === "Enter") {
+        if (!list().hidden && activeIndex >= 0) {
+          e.preventDefault();
+          pick(activeIndex);
+        }
+      } else if (e.key === "Escape") {
+        if (!list().hidden) { e.stopPropagation(); close(); }
+      }
+    });
+
+    toggle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      if (list().hidden) { inp.focus(); open(); }
+      else { close(); }
+    });
+
+    ul.addEventListener("mousedown", (e) => {
+      const li = e.target.closest("li");
+      if (!li) return;
+      e.preventDefault();
+      pick(parseInt(li.dataset.index, 10));
+    });
+  }
+
+  return { init, close };
+})();
+
 // ---------- Drawer ----------
 
 function openDrawer(id) {
@@ -397,11 +489,13 @@ function openDrawer(id) {
   amtEl.className = row.amount < 0 ? "debit" : "credit";
   $("#d-category").value = row.category || "";
   $("#d-comment").value = row.comment || "";
+  categoryCombo.close();
   $("#drawer").hidden = false;
 }
 
 function closeDrawer() {
   state.editing = null;
+  categoryCombo.close();
   $("#drawer").hidden = true;
 }
 
@@ -529,6 +623,9 @@ function wire() {
     if (!tr) return;
     openDrawer(tr.dataset.id);
   });
+
+  // Category combobox inside the drawer
+  categoryCombo.init();
 
   // Drawer actions
   $("#drawer-close").addEventListener("click", closeDrawer);

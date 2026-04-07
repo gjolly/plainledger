@@ -180,6 +180,57 @@ tbody td.comment, tbody td.category {
 }
 .drawer-actions { display: flex; gap: 0.5rem; margin-top: auto; }
 
+/* Combobox (drawer category field) */
+.combobox { position: relative; }
+.combobox input[type="text"] {
+  width: 100%;
+  padding-right: 2rem;
+}
+.combobox-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 1.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+}
+.combobox-toggle:hover { color: var(--fg); }
+.combobox-list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  max-height: 14rem;
+  overflow-y: auto;
+  z-index: 25;
+}
+.combobox-list[hidden] { display: none; }
+.combobox-list li {
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+.combobox-list li:hover,
+.combobox-list li.active {
+  background: var(--row-hover);
+}
+
 /* Toast */
 .toast {
   position: fixed;
