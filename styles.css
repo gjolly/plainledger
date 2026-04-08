@@ -119,6 +119,7 @@ html, body {
 }
 .summary .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
 .summary span:not(.label) { font-variant-numeric: tabular-nums; font-weight: 600; }
+.summary .pct { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
 
 main {
   margin: 0 1.25rem 2rem;

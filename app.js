@@ -363,9 +363,25 @@ function render() {
     if (contrib >= 0) cIn += contrib;
     else cOut += contrib;
   }
+  // Period totals: same date range as the current filter, ignoring sign,
+  // search, and category filters. Used to show what share of the period's
+  // in/out the currently visible rows represent.
+  let pIn = 0, pOut = 0;
+  for (const r of state.rows) {
+    if (state.filters.from && r.date < state.filters.from) continue;
+    if (state.filters.to && r.date > state.filters.to) continue;
+    if (r.amount >= 0) pIn += r.amount;
+    else pOut += r.amount;
+  }
+  const fmtPct = (part, total) => {
+    if (!total) return "";
+    return ` (${(part / total * 100).toFixed(1)}%)`;
+  };
   $("#s-count").textContent = state.filtered.length;
   $("#s-in").textContent = fmtAmount(cIn);
+  $("#s-in-pct").textContent = fmtPct(cIn, pIn);
   $("#s-out").textContent = fmtAmount(cOut);
+  $("#s-out-pct").textContent = fmtPct(cOut, pOut);
   const net = cIn + cOut;
   const netEl = $("#s-net");
   netEl.textContent = fmtAmount(net);
