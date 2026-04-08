@@ -1,0 +1,17 @@
+{
+  "name": "plainledger",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "predeploy": "npm run build",
+    "deploy": "wrangler deploy",
+    "predev": "npm run build",
+    "dev": "wrangler dev",
+    "start": "wrangler dev"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "wrangler": "^4.81.0"
+  }
+}

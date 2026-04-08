@@ -1,34 +1,51 @@
-# Finance — local QIF ledger
+# Finance — QIF ledger on Cloudflare Workers
 
-A single-user static web app for viewing and annotating bank transactions imported from QIF files. All data lives in the user's browser (IndexedDB). No backend, no build step, no network calls.
+A single-user web app for viewing and annotating bank transactions imported from QIF files. Deployed as a Cloudflare Worker that serves static assets only — there is no server-side code, no database, no network calls. All data still lives in the user's browser (IndexedDB).
 
 ## Project shape
 
 ```
 finance/
-├── index.html   # UI shell: topbar, dropzone, filters, summary, table, drawer
-├── styles.css   # All styling (CSS custom properties at the top)
-├── app.js       # Parser + IndexedDB layer + rendering + event wiring
-└── *.qif        # Sample bank exports (kept for manual testing)
+├── src/                # Authoritative source — edit files here
+│   ├── index.html      # UI shell: topbar, dropzone, filters, summary, table, drawer
+│   ├── styles.css      # All styling (CSS custom properties at the top)
+│   └── app.js          # Parser + IndexedDB layer + rendering + event wiring
+├── public/             # Build output served by the Worker. DO NOT edit by hand — wiped on every build.
+├── scripts/
+│   └── build.mjs       # Minifies src/ → public/ via esbuild (JS+CSS only; HTML copied verbatim)
+├── wrangler.jsonc      # Worker config — `assets.directory` points at ./public
+├── package.json        # devDeps: esbuild + wrangler. Scripts: build / dev / deploy
+└── *.qif               # Sample bank exports (kept for manual testing)
 ```
 
-Three files. No framework, no bundler, no package.json. If you're tempted to add one, don't — the whole point is that this runs from `file://` with zero setup.
+The code is still vanilla HTML/CSS/JS — no framework, no bundler, no client-side imports. The build step is intentionally minimal: esbuild minifies `src/*.js` and `src/*.css` into `public/`, with `bundle: false` so `index.html` keeps loading them as separate URLs. HTML is copied through unchanged (Cloudflare gzips/brotlis it anyway). The Worker has no entry script (no `main` in `wrangler.jsonc`); it's pure static-asset serving via Cloudflare's asset handler. Don't add a real bundler, a framework, or server-side Worker logic.
+
+`public/` is generated. Never edit it directly — your changes will vanish on the next `npm run build`.
 
 ## Running it
 
-Open `index.html` directly in a browser. If the browser blocks IndexedDB on `file://` (some Chrome configurations), serve the directory instead:
+Local dev (builds first, then runs Wrangler's local runtime `workerd` against `public/`):
 
 ```
-python3 -m http.server
-# then open http://localhost:8000
+npm run dev      # = npm run build && wrangler dev
 ```
+
+Deploy:
+
+```
+npm run deploy   # = npm run build && wrangler deploy
+```
+
+The `predev` and `predeploy` hooks in `package.json` call the build automatically — you should never need to invoke `wrangler` directly. If you want a one-off rebuild without serving, `npm run build`.
+
+You can still open `src/index.html` directly in a browser for quick edits (the un-minified source works fine), but if the browser blocks IndexedDB on `file://` (some Chrome configurations) use `npm run dev` instead.
 
 There are no tests, no linters, no CI. Verification is manual: import a QIF, check the table, edit a row, reload, confirm persistence. For parser changes, the quick sanity check is:
 
 ```bash
 node -e '
 const fs = require("fs");
-const src = fs.readFileSync("app.js", "utf8");
+const src = fs.readFileSync("src/app.js", "utf8");
 const code = src.replace(/\/\/ ---------- IndexedDB layer ----------[\s\S]*$/, "")
   + "\nmodule.exports = { parseQIF, assignIds };";
 const m = { exports: {} };
@@ -103,10 +120,11 @@ No virtual DOM, no diffing. The table is rebuilt on every render. This is fine f
 - No auto-categorization rules.
 - No multi-account separation (flat ledger; QIF `!Type:` headers are read but only `Bank`-style records are exercised).
 - No sync, no export to anything except a plain JSON backup, no cloud.
-- No service worker / PWA install. It already works offline from `file://`.
+- No service worker / PWA install.
+- No server-side logic in the Worker. It serves static assets, nothing else. Don't add a fetch handler, KV, D1, R2, Durable Objects, or any binding without an explicit ask.
 
 Keep it that way unless the user asks otherwise. YAGNI is load-bearing here.
 
 ## Privacy
 
-This is the user's personal financial data. It never leaves the browser. Do not add analytics, telemetry, CDN-hosted fonts/scripts, or any fetch() calls to third-party domains.
+This is the user's personal financial data. It never leaves the browser — even though the app is now hosted on a Cloudflare Worker, the Worker only ships static assets. Do not add analytics, telemetry, CDN-hosted fonts/scripts, server-side logging, or any fetch() calls to third-party domains. Do not introduce a Worker fetch handler that touches transaction data.
