@@ -91,7 +91,8 @@ html, body {
 }
 .bulk-apply-label { color: var(--muted); }
 .bulk-apply .combobox { width: 14rem; }
-.bulk-apply input[type="text"] {
+.bulk-apply input[type="text"],
+.bulk-apply input[type="number"] {
   font: inherit;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
@@ -99,6 +100,7 @@ html, body {
   background: var(--card);
   color: var(--fg);
 }
+.bulk-apply input[type="number"] { width: 4.5rem; }
 
 .summary {
   display: flex;
@@ -197,6 +199,52 @@ tbody td.comment, tbody td.category {
   resize: vertical;
 }
 .drawer-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+
+/* Drawer: multi-category editor */
+.d-categories {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem 0.75rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.d-categories legend {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0 0.25rem;
+}
+.d-categories ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.d-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.d-cat-row .combobox { flex: 1; min-width: 0; }
+.d-cat-row input[type="number"] {
+  width: 4rem;
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  text-align: right;
+}
+.d-cat-pct-suffix { color: var(--muted); font-size: 0.85rem; }
+.d-cat-remove {
+  padding: 0.2rem 0.55rem;
+  line-height: 1;
+}
+.d-categories > .btn { align-self: flex-start; }
 
 /* Combobox (drawer category field) */
 .combobox { position: relative; }

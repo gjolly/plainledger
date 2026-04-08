@@ -49,6 +49,9 @@
       <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Show categories">▾</button>
       <ul id="bc-category-list" class="combobox-list" role="listbox" hidden></ul>
     </div>
+    <span class="bulk-apply-label">at</span>
+    <input id="bc-pct" type="number" min="0" max="100" step="1" value="100" title="Percentage">
+    <span class="bulk-apply-label">%</span>
     <button id="bc-apply" class="btn primary" type="button">Apply</button>
   </section>
 
@@ -86,15 +89,11 @@
       <dt>Memo</dt><dd id="d-memo"></dd>
       <dt>Amount</dt><dd id="d-amount"></dd>
     </dl>
-    <label>Category
-      <div class="combobox" id="d-category-combo">
-        <input id="d-category" type="text" autocomplete="off"
-               role="combobox" aria-autocomplete="list"
-               aria-expanded="false" aria-controls="d-category-list">
-        <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Show categories">▾</button>
-        <ul id="d-category-list" class="combobox-list" role="listbox" hidden></ul>
-      </div>
-    </label>
+    <fieldset class="d-categories">
+      <legend>Categories</legend>
+      <ul id="d-cat-list"></ul>
+      <button id="d-cat-add" type="button" class="btn">Add category</button>
+    </fieldset>
     <label>Comment
       <textarea id="d-comment" rows="5"></textarea>
     </label>

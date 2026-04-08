@@ -169,7 +169,7 @@ async function dbBulkOverwrite(rows) {
   });
 }
 
-// Merge-preserving bulk put: existing rows keep user-added category + comment.
+// Merge-preserving bulk put: existing rows keep user-added categories + comment.
 async function dbBulkPut(rows) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -187,13 +187,18 @@ async function dbBulkPut(rows) {
           store.put(row);
           added++;
         } else {
-          // Preserve user fields, update everything else.
+          // Preserve user fields, update everything else. Existing rows may
+          // still use the legacy `category` string; normalizeRow handles both.
+          const existingNorm = normalizeRow(existing);
+          const incomingNorm = normalizeRow(row);
           const merged = {
-            ...row,
-            category: existing.category || row.category || "",
+            ...incomingNorm,
+            categories: existingNorm.categories.length
+              ? existingNorm.categories
+              : incomingNorm.categories,
             comment: existing.comment || "",
           };
-          const changed = JSON.stringify(existing) !== JSON.stringify(merged);
+          const changed = JSON.stringify(existingNorm) !== JSON.stringify(merged);
           if (changed) { store.put(merged); updated++; }
           else { unchanged++; }
         }
@@ -205,6 +210,38 @@ async function dbBulkPut(rows) {
     t.oncomplete = () => resolve({ added, updated, unchanged });
     t.onerror = () => reject(t.error);
   });
+}
+
+// Normalize a row to the current shape:
+//   { ..., categories: [{name, pct}] }
+// Accepts legacy rows that had `category: string` and converts them.
+// Empty/missing -> []. Never mutates the input.
+function normalizeRow(row) {
+  if (Array.isArray(row.categories)) {
+    const clean = row.categories
+      .map(c => ({ name: String(c.name || "").trim(), pct: clampPct(c.pct) }))
+      .filter(c => c.name);
+    const { category, ...rest } = row;
+    return { ...rest, categories: clean };
+  }
+  const legacy = typeof row.category === "string" ? row.category.trim() : "";
+  const { category, ...rest } = row;
+  return {
+    ...rest,
+    categories: legacy ? [{ name: legacy, pct: 100 }] : [],
+  };
+}
+
+function clampPct(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  if (x < 0) return 0;
+  if (x > 100) return 100;
+  return x;
+}
+
+function rowCategoryNames(row) {
+  return (row.categories || []).map(c => c.name);
 }
 
 // ---------- State + rendering ----------
@@ -221,6 +258,7 @@ const state = {
     categories: new Set(),
   },
   editing: null,
+  editingCategories: [],
   allCategories: [],
 };
 
@@ -246,9 +284,14 @@ function applyFilters() {
     if (f.to && r.date > f.to) return false;
     if (f.sign === "debit" && r.amount >= 0) return false;
     if (f.sign === "credit" && r.amount < 0) return false;
-    if (f.categories.size && !f.categories.has(r.category || "")) return false;
+    const names = rowCategoryNames(r);
+    if (f.categories.size) {
+      let any = false;
+      for (const n of names) if (f.categories.has(n)) { any = true; break; }
+      if (!any) return false;
+    }
     if (q) {
-      const hay = `${r.payee} ${r.memo} ${r.comment || ""} ${r.category || ""}`.toLowerCase();
+      const hay = `${r.payee} ${r.memo} ${r.comment || ""} ${names.join(" ")}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -256,12 +299,30 @@ function applyFilters() {
   const { key, dir } = state.sort;
   const mul = dir === "asc" ? 1 : -1;
   state.filtered.sort((a, b) => {
-    let av = a[key], bv = b[key];
-    if (key === "amount") return (av - bv) * mul;
+    let av, bv;
+    if (key === "amount") return (a.amount - b.amount) * mul;
+    if (key === "category") {
+      av = rowCategoryNames(a).join(", ");
+      bv = rowCategoryNames(b).join(", ");
+    } else {
+      av = a[key];
+      bv = b[key];
+    }
     av = (av || "").toString().toLowerCase();
     bv = (bv || "").toString().toLowerCase();
     return av < bv ? -1 * mul : av > bv ? 1 * mul : 0;
   });
+}
+
+// Display helper: comma-separated names; append " (N%)" when pct !== 100.
+function formatCategories(cats) {
+  if (!cats || !cats.length) return "";
+  return cats.map(c => c.pct === 100 ? c.name : `${c.name} (${formatPct(c.pct)}%)`).join(", ");
+}
+
+function formatPct(n) {
+  // Whole numbers render without decimals; fractional pcts show up to 2 dp.
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
 }
 
 function render() {
@@ -277,7 +338,7 @@ function render() {
       <td>${fmtDate(r.date)}</td>
       <td class="payee">${escapeHtml(r.payee)}</td>
       <td class="num ${amtClass}">${fmtAmount(r.amount)}</td>
-      <td class="category">${escapeHtml(r.category || "")}</td>
+      <td class="category">${escapeHtml(formatCategories(r.categories))}</td>
       <td class="comment">${escapeHtml(r.comment || "")}</td>
     `;
     frag.appendChild(tr);
@@ -287,11 +348,20 @@ function render() {
   $("#empty-state").hidden = state.rows.length > 0;
   $("#tx-table").hidden = state.rows.length === 0;
 
-  // Summary
+  // Summary. When a category filter is active, each row contributes
+  // amount * (sum of pct for matching categories) / 100. Otherwise full
+  // amounts (a row appears once regardless of how many categories it has).
+  const filterCats = state.filters.categories;
   let cIn = 0, cOut = 0;
   for (const r of state.filtered) {
-    if (r.amount >= 0) cIn += r.amount;
-    else cOut += r.amount;
+    let contrib = r.amount;
+    if (filterCats.size) {
+      let pctSum = 0;
+      for (const c of r.categories || []) if (filterCats.has(c.name)) pctSum += c.pct;
+      contrib = r.amount * pctSum / 100;
+    }
+    if (contrib >= 0) cIn += contrib;
+    else cOut += contrib;
   }
   $("#s-count").textContent = state.filtered.length;
   $("#s-in").textContent = fmtAmount(cIn);
@@ -319,7 +389,9 @@ function escapeHtml(s) {
 
 function refreshCategoryUI() {
   const cats = new Set();
-  for (const r of state.rows) if (r.category) cats.add(r.category);
+  for (const r of state.rows) {
+    for (const c of r.categories || []) if (c.name) cats.add(c.name);
+  }
   const sorted = Array.from(cats).sort();
   state.allCategories = sorted;
 
@@ -343,7 +415,7 @@ async function importQifFile(file) {
     payee: p.payee,
     memo: p.memo,
     checknum: p.checknum,
-    category: p.qifCategory || "",
+    categories: p.qifCategory ? [{ name: p.qifCategory, pct: 100 }] : [],
     comment: "",
   }));
   const { added, updated, unchanged } = await dbBulkPut(rows);
@@ -490,12 +562,6 @@ function createCategoryCombo({ inputSel, listSel, toggleSel, onPick }) {
   return { init, close };
 }
 
-const categoryCombo = createCategoryCombo({
-  inputSel: "#d-category",
-  listSel: "#d-category-list",
-  toggleSel: "#d-category-combo .combobox-toggle",
-});
-
 const bulkCategoryCombo = createCategoryCombo({
   inputSel: "#bc-category",
   listSel: "#bc-category-list",
@@ -508,29 +574,96 @@ function openDrawer(id) {
   const row = state.rows.find(r => r.id === id);
   if (!row) return;
   state.editing = id;
+  // Deep copy so edits don't mutate the row until save.
+  state.editingCategories = (row.categories || []).map(c => ({ name: c.name, pct: c.pct }));
   $("#d-date").textContent = fmtDate(row.date);
   $("#d-payee").textContent = row.payee || "";
   $("#d-memo").textContent = row.memo || "—";
   const amtEl = $("#d-amount");
   amtEl.textContent = fmtAmount(row.amount);
   amtEl.className = row.amount < 0 ? "debit" : "credit";
-  $("#d-category").value = row.category || "";
   $("#d-comment").value = row.comment || "";
-  categoryCombo.close();
+  renderDrawerCategories();
   $("#drawer").hidden = false;
 }
 
 function closeDrawer() {
   state.editing = null;
-  categoryCombo.close();
+  state.editingCategories = [];
   $("#drawer").hidden = true;
+}
+
+// Per-row comboboxes are instantiated fresh on every render. The factory
+// is cheap and the drawer rarely contains more than a handful of categories.
+const drawerCombos = [];
+
+function renderDrawerCategories() {
+  const list = $("#d-cat-list");
+  list.innerHTML = "";
+  drawerCombos.length = 0;
+  state.editingCategories.forEach((cat, i) => {
+    const li = document.createElement("li");
+    li.className = "d-cat-row";
+    li.innerHTML = `
+      <div class="combobox" id="d-cat-combo-${i}">
+        <input id="d-cat-name-${i}" type="text" autocomplete="off"
+               role="combobox" aria-autocomplete="list"
+               aria-expanded="false" aria-controls="d-cat-list-${i}"
+               value="${escapeHtml(cat.name)}">
+        <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Show categories">▾</button>
+        <ul id="d-cat-list-${i}" class="combobox-list" role="listbox" hidden></ul>
+      </div>
+      <input class="d-cat-pct" type="number" min="0" max="100" step="1"
+             value="${cat.pct}" aria-label="Percentage">
+      <span class="d-cat-pct-suffix">%</span>
+      <button type="button" class="btn d-cat-remove" aria-label="Remove category">×</button>
+    `;
+    list.appendChild(li);
+
+    const nameInput = li.querySelector(`#d-cat-name-${i}`);
+    nameInput.addEventListener("input", () => {
+      state.editingCategories[i].name = nameInput.value.trim();
+    });
+
+    const pctInput = li.querySelector(".d-cat-pct");
+    pctInput.addEventListener("input", () => {
+      state.editingCategories[i].pct = clampPct(pctInput.value);
+    });
+
+    li.querySelector(".d-cat-remove").addEventListener("click", () => {
+      state.editingCategories.splice(i, 1);
+      renderDrawerCategories();
+    });
+
+    const combo = createCategoryCombo({
+      inputSel: `#d-cat-name-${i}`,
+      listSel: `#d-cat-list-${i}`,
+      toggleSel: `#d-cat-combo-${i} .combobox-toggle`,
+      onPick: (name) => { state.editingCategories[i].name = name; },
+    });
+    combo.init();
+    drawerCombos.push(combo);
+  });
+}
+
+function addDrawerCategory() {
+  const pct = state.editingCategories.length === 0 ? 100 : 0;
+  state.editingCategories.push({ name: "", pct });
+  renderDrawerCategories();
+  // Focus the newly added name input.
+  const last = state.editingCategories.length - 1;
+  const el = $(`#d-cat-name-${last}`);
+  if (el) el.focus();
 }
 
 async function saveDrawer() {
   if (!state.editing) return;
   const row = state.rows.find(r => r.id === state.editing);
   if (!row) return;
-  row.category = $("#d-category").value.trim();
+  row.categories = state.editingCategories
+    .map(c => ({ name: String(c.name || "").trim(), pct: clampPct(c.pct) }))
+    .filter(c => c.name);
+  if ("category" in row) delete row.category;
   row.comment = $("#d-comment").value;
   await dbPut(row);
   closeDrawer();
@@ -551,14 +684,25 @@ async function deleteDrawer() {
 async function applyBulkCategorize() {
   const category = $("#bc-category").value.trim();
   if (!category) { showToast("Category required"); return; }
+  const pct = clampPct($("#bc-pct").value);
   const matches = state.filtered;
   if (matches.length === 0) { showToast("No filtered results"); return; }
-  if (!confirm(`Categorize ${matches.length} transaction${matches.length === 1 ? "" : "s"} as "${category}"?`)) return;
-  const updated = matches.map(r => ({ ...r, category }));
+  if (!confirm(`Add "${category}" at ${formatPct(pct)}% to ${matches.length} transaction${matches.length === 1 ? "" : "s"}?`)) return;
+  // Add the category if missing; update pct if already present. Leave other
+  // categories on the row untouched.
+  const updated = matches.map(r => {
+    const cats = (r.categories || []).map(c => ({ name: c.name, pct: c.pct }));
+    const existing = cats.find(c => c.name === category);
+    if (existing) existing.pct = pct;
+    else cats.push({ name: category, pct });
+    const next = { ...r, categories: cats };
+    if ("category" in next) delete next.category;
+    return next;
+  });
   await dbBulkOverwrite(updated);
   $("#bc-category").value = "";
   await reload();
-  showToast(`Categorized ${matches.length}`);
+  showToast(`Updated ${matches.length}`);
 }
 
 // ---------- Toast ----------
@@ -575,7 +719,19 @@ function showToast(msg) {
 // ---------- Wiring ----------
 
 async function reload() {
-  state.rows = await dbAll();
+  const raw = await dbAll();
+  // Normalize every row; persist any that actually changed shape (legacy
+  // `category` string rows get migrated to `categories` array).
+  const needsWrite = [];
+  state.rows = raw.map(r => {
+    const n = normalizeRow(r);
+    if (!("categories" in r) || "category" in r) needsWrite.push(n);
+    return n;
+  });
+  if (needsWrite.length) {
+    try { await dbBulkOverwrite(needsWrite); }
+    catch (e) { console.error("Migration write failed", e); }
+  }
   render();
 }
 
@@ -666,8 +822,8 @@ function wire() {
     openDrawer(tr.dataset.id);
   });
 
-  // Category combobox inside the drawer
-  categoryCombo.init();
+  // Drawer category editor
+  $("#d-cat-add").addEventListener("click", addDrawerCategory);
   bulkCategoryCombo.init();
 
   // Bulk categorize current filtered results

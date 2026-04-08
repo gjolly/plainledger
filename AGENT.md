@@ -49,16 +49,21 @@ A transaction row is a flat object keyed by a stable content hash:
 
 ```js
 {
-  id:       "788bb404-2026-04-07",   // djb2(date|amount|payee|memo|checknum) + date, plus "#N" for duplicates
-  date:     "2026-04-07",             // ISO, always — parser normalises DD/MM/YYYY
-  amount:   132.00,                   // number, negative = debit
-  payee:    "VIR C.P.A.M. TOULOUSE",
-  memo:     "",
-  checknum: "",
-  category: "",                       // user-editable
-  comment:  ""                        // user-editable
+  id:         "788bb404-2026-04-07",  // djb2(date|amount|payee|memo|checknum) + date, plus "#N" for duplicates
+  date:       "2026-04-07",            // ISO, always — parser normalises DD/MM/YYYY
+  amount:     132.00,                  // number, negative = debit
+  payee:      "VIR C.P.A.M. TOULOUSE",
+  memo:       "",
+  checknum:   "",
+  categories: [                        // user-editable; empty means uncategorized
+    { name: "insurance", pct: 100 },
+    { name: "car",       pct: 100 },   // two 100% entries are valid (no normalization)
+  ],
+  comment:    ""                       // user-editable
 }
 ```
+
+A transaction can belong to multiple categories, each with an independent percentage share (0–100). The table always shows the full transaction amount; the summary (In/Out/Net) weights by percentage only when a category filter is active. Legacy rows with `category: "foo"` are migrated on load by `normalizeRow` (in `app.js`) to `categories: [{name: "foo", pct: 100}]` and persisted back via `dbBulkOverwrite`.
 
 ### Storage: IndexedDB
 
