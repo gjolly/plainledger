@@ -52,8 +52,19 @@
         <p>
           Your financial data never leaves your browser. This site is served as
           static files from a Cloudflare Worker — there is no backend, no
-          database, no analytics, and no third-party scripts. The app does not
-          make a single network call with your transactions.
+          database, no third-party scripts, and the app does not make a single
+          network call with your transactions. A strict
+          <code>Content-Security-Policy</code> header enforces this in the
+          browser.
+        </p>
+        <p>
+          The one exception is Cloudflare's built-in request logging
+          (<em>Workers observability</em>): because the site is served from
+          Cloudflare, Cloudflare sees the HTTP requests for the static assets
+          (your IP, user agent, and the file paths requested) when you load the
+          page. None of your transactions, categories, or comments are included
+          — they stay in your browser. If that's not acceptable, you can clone
+          the repo and host it yourself.
         </p>
         <h3>Issues &amp; feedback</h3>
         <p>

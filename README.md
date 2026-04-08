@@ -15,12 +15,14 @@ Deployed at **https://plainledger.gjolly.dev**.
 ## What it deliberately doesn't do
 
 - No charts, no auto-categorization rules, no multi-account separation.
-- No sync, no cloud storage, no analytics, no telemetry.
+- No sync, no cloud storage, no product analytics, no telemetry of your ledger.
 - No server-side code. The Cloudflare Worker only serves static assets.
 
 ## Privacy
 
-All data lives in your browser's IndexedDB and never leaves it. The app is hosted on a Cloudflare Worker that ships static files only — there is no backend, no database, no third-party scripts.
+All data lives in your browser's IndexedDB and never leaves it. The app is hosted on a Cloudflare Worker that ships static files only — there is no backend, no database, no third-party scripts. A strict `Content-Security-Policy` header (`connect-src 'none'`) enforces in-browser that the page can't make outbound network calls.
+
+The one caveat: because the site is served from Cloudflare, Cloudflare's Workers observability logs request-level metadata (IP, user agent, requested path, timing) for the static asset fetches that happen when you load the page. That's request logging for the hosting itself, not analytics of your ledger — your transactions, categories, and comments are never sent anywhere. If you'd rather avoid even that, clone the repo and host it yourself.
 
 ## Stack
 
