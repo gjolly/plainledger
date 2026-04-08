@@ -1,11 +1,11 @@
-# Finance — QIF ledger on Cloudflare Workers
+# Plainledger — QIF ledger on Cloudflare Workers
 
 A single-user web app for viewing and annotating bank transactions imported from QIF files. Deployed as a Cloudflare Worker that serves static assets only — there is no server-side code, no database, no network calls. All data still lives in the user's browser (IndexedDB).
 
 ## Project shape
 
 ```
-finance/
+plainledger/
 ├── src/                # Authoritative source — edit files here
 │   ├── index.html      # UI shell: topbar, dropzone, filters, summary, table, drawer
 │   ├── styles.css      # All styling (CSS custom properties at the top)
