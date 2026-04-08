@@ -20,8 +20,60 @@
         <input id="json-input" type="file" accept=".json,application/json" hidden>
       </label>
       <button id="clear-all" class="btn danger" type="button">Clear all</button>
+      <button id="help-btn" class="btn" type="button" aria-label="Help">Help</button>
     </div>
   </header>
+
+  <div id="help-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <header>
+        <h2 id="help-title">Welcome to plainledger</h2>
+        <button id="help-close" class="btn" type="button" data-close aria-label="Close">×</button>
+      </header>
+      <div class="modal-body">
+        <p>
+          <strong>plainledger</strong> is a tiny, single-user ledger for viewing
+          and annotating bank transactions. Import a <code>.qif</code> export
+          from your bank, then tag transactions with categories and comments.
+        </p>
+        <p class="callout callout-warn">
+          <strong>Your data lives only in this browser.</strong> There is no
+          account, no sync, no cloud storage. If you clear your browser data,
+          switch browsers, or use another device, your transactions and
+          annotations will be gone.
+        </p>
+        <p class="callout callout-warn">
+          <strong>Back up manually.</strong> Use <em>Export JSON</em> regularly
+          to save a copy of your ledger, and <em>Import JSON</em> to restore it.
+          This is the only way to avoid losing your work.
+        </p>
+        <h3>Privacy</h3>
+        <p>
+          Your financial data never leaves your browser. This site is served as
+          static files from a Cloudflare Worker — there is no backend, no
+          database, no analytics, and no third-party scripts. The app does not
+          make a single network call with your transactions.
+        </p>
+        <h3>Issues &amp; feedback</h3>
+        <p>
+          Source code and issue tracker:
+          <a href="https://github.com/gjolly/plainledger" target="_blank" rel="noopener noreferrer">github.com/gjolly/plainledger</a>.
+          Feel free to open an issue if something is broken or confusing —
+          though please keep in mind this is a personal project, and it is up
+          to the maintainer to decide what gets addressed.
+        </p>
+        <h3>License</h3>
+        <p>
+          plainledger is released under the
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU Affero General Public License v3.0</a>.
+        </p>
+      </div>
+      <footer class="modal-actions">
+        <button class="btn primary" type="button" data-close>Got it</button>
+      </footer>
+    </div>
+  </div>
 
   <section id="dropzone" class="dropzone">
     Drop a <code>.qif</code> file here, or click <em>Import QIF</em>.

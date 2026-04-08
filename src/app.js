@@ -850,12 +850,25 @@ function wire() {
   $("#d-save").addEventListener("click", saveDrawer);
   $("#d-delete").addEventListener("click", deleteDrawer);
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("#drawer").hidden) closeDrawer();
+    if (e.key !== "Escape") return;
+    if (!$("#help-modal").hidden) { closeHelp(); return; }
+    if (!$("#drawer").hidden) closeDrawer();
   });
+
+  // Help modal
+  $("#help-btn").addEventListener("click", openHelp);
+  for (const el of $$("#help-modal [data-close]")) {
+    el.addEventListener("click", closeHelp);
+  }
 }
 
+function openHelp() { $("#help-modal").hidden = false; }
+function closeHelp() { $("#help-modal").hidden = true; }
+
 wire();
-reload().catch(err => {
+reload().then(() => {
+  if (state.rows.length === 0) openHelp();
+}).catch(err => {
   console.error(err);
   showToast("Failed to load database");
 });

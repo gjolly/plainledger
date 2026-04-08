@@ -298,6 +298,79 @@ tbody td.comment, tbody td.category {
   background: var(--row-hover);
 }
 
+/* Modal */
+.modal[hidden] { display: none; }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+}
+.modal-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  width: min(560px, 100%);
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-card header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.modal-card header h2 { margin: 0; font-size: 1.05rem; }
+.modal-card header .btn { margin-left: auto; }
+.modal-body {
+  padding: 0.85rem 1.1rem;
+  overflow-y: auto;
+}
+.modal-body p { margin: 0 0 0.85rem; }
+.modal-body h3 {
+  margin: 1.1rem 0 0.35rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.modal-body a { color: var(--accent); }
+.modal-body code {
+  background: var(--row-hover);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}
+.callout {
+  border-left: 3px solid var(--border);
+  padding: 0.55rem 0.75rem;
+  background: var(--bg);
+  border-radius: 0 6px 6px 0;
+}
+.callout-warn {
+  border-left-color: var(--debit);
+  background: #fef2f2;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid var(--border);
+}
+
 /* Toast */
 .toast {
   position: fixed;
